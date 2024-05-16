@@ -106,6 +106,7 @@ public:
 
 	void SelectAll();
 	void SelectLine(int aLine);
+	void SelectCurrentLine();
 	void SelectRegion(int aStartLine, int aStartChar, int aEndLine, int aEndChar);
 	void SelectNextOccurrenceOf(const char* aText, int aTextSize, bool aCaseSensitive = true);
 	void SelectAllOccurrencesOf(const char* aText, int aTextSize, bool aCaseSensitive = true);

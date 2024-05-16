@@ -69,6 +69,13 @@ void TextEditor::SelectLine(int aLine)
 	SetSelection({ aLine, 0 }, { aLine, GetLineMaxColumn(aLine) });
 }
 
+void TextEditor::SelectCurrentLine()
+{
+	int line, column;
+	GetCursorPosition(line, column);
+	SelectLine(line);
+}
+
 void TextEditor::SelectRegion(int aStartLine, int aStartChar, int aEndLine, int aEndChar)
 {
 	ClearSelections();
@@ -2034,12 +2041,14 @@ void TextEditor::HandleKeyboardInputs(bool aParentIsFocused)
 			Cut();
 		else if (isShortcut && ImGui::IsKeyPressed(ImGuiKey_A))
 			SelectAll();
+		else if (ctrl && ImGui::IsKeyPressed(ImGuiKey_L))
+			SelectCurrentLine();
 		else if (isShortcut && ImGui::IsKeyPressed(ImGuiKey_D))
 			AddCursorForNextOccurrence();
         else if (!mReadOnly && !alt && !ctrl && !shift && !super && (ImGui::IsKeyPressed(ImGuiKey_Enter)) || ImGui::IsKeyPressed(ImGuiKey_KeypadEnter))
 			EnterCharacter('\n', false);
 		else if (!mReadOnly && !alt && !ctrl && !super && ImGui::IsKeyPressed(ImGuiKey_Tab))
-			EnterCharacter('\t', shift);
+			for (int i = 0; i < mTabSize; i++) EnterCharacter(' ', shift);
 		if (!mReadOnly && !io.InputQueueCharacters.empty() && ctrl == alt && !super)
 		{
 			for (int i = 0; i < io.InputQueueCharacters.Size; i++)
