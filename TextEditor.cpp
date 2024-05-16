@@ -71,10 +71,21 @@ void TextEditor::SelectLine(int aLine)
 
 void TextEditor::SelectCurrentLine()
 {
-	int line, column;
-	GetCursorPosition(line, column);
-	SelectLine(line);
-	MoveRight(true);
+	if (AnyCursorHasSelection())
+	{
+		const Cursor& currentCursor = mState.mCursors[mState.GetLastAddedCursorIndex()];
+		if (currentCursor.GetSelectionStart().mColumn != 0)
+			MoveHome(false);
+		MoveDown(1, true);
+		MoveEnd(true);
+	}
+	else
+	{
+		ClearExtraCursors();
+		MoveHome(false);
+		MoveEnd(true);
+		MoveRight(true);
+	}
 }
 
 void TextEditor::SelectRegion(int aStartLine, int aStartChar, int aEndLine, int aEndChar)
