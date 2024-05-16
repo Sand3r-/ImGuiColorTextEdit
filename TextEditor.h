@@ -10,14 +10,7 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <map>
-
-#ifdef IMGUI_EDITOR_NO_BOOST
-	#include <regex>
-	namespace boost = std;
-#else
-	#include <boost/regex.hpp>
-#endif
-
+#include <regex>
 #include "imgui.h"
 
 class IMGUI_API TextEditor
@@ -307,7 +300,7 @@ private:
 		UndoOperationType mType;
 	};
 
-	typedef std::vector<std::pair<boost::regex, PaletteIndex>> RegexList;
+	typedef std::vector<std::pair<std::regex, PaletteIndex>> RegexList;
 
 	class UndoRecord
 	{
