@@ -74,6 +74,7 @@ void TextEditor::SelectCurrentLine()
 	int line, column;
 	GetCursorPosition(line, column);
 	SelectLine(line);
+	MoveRight(true);
 }
 
 void TextEditor::SelectRegion(int aStartLine, int aStartChar, int aEndLine, int aEndChar)
