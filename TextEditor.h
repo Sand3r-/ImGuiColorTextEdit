@@ -88,15 +88,8 @@ public:
 		std::vector<TokenRegexString> mTokenRegexStrings;
 		bool mCaseSensitive = true;
 
-		static const LanguageDefinition& Cpp();
-		static const LanguageDefinition& Hlsl();
 		static const LanguageDefinition& Glsl();
-		static const LanguageDefinition& Python();
-		static const LanguageDefinition& C();
-		static const LanguageDefinition& Sql();
-		static const LanguageDefinition& AngelScript();
 		static const LanguageDefinition& Lua();
-		static const LanguageDefinition& Cs();
 		static const LanguageDefinition& Json();
 	};
 
