@@ -2027,9 +2027,9 @@ void TextEditor::HandleKeyboardInputs(bool aParentIsFocused)
 			Backspace(ctrl);
 		else if (!mReadOnly && !alt && ctrl && shift && !super && ImGui::IsKeyPressed(ImGuiKey_K))
 			RemoveCurrentLines();
-		else if (!mReadOnly && isShortcut && ImGui::IsKeyPressed(ImGuiKey_LeftBracket))
+		else if (!mReadOnly && shift && ImGui::IsKeyPressed(ImGuiKey_Tab))
 			ChangeCurrentLinesIndentation(false);
-		else if (!mReadOnly && isShortcut && ImGui::IsKeyPressed(ImGuiKey_RightBracket))
+		else if (!mReadOnly && ImGui::IsKeyPressed(ImGuiKey_Tab))
 			ChangeCurrentLinesIndentation(true);
 		else if (!alt && ctrl && shift && !super && ImGui::IsKeyPressed(ImGuiKey_UpArrow))
 			MoveUpCurrentLines();
