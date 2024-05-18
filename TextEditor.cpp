@@ -71,21 +71,16 @@ void TextEditor::SelectLine(int aLine)
 
 void TextEditor::SelectCurrentLine()
 {
-	if (AnyCursorHasSelection())
+	for (int c = 0; c <= mState.mCurrentCursor; c++)
 	{
-		const Cursor& currentCursor = mState.mCursors[mState.GetLastAddedCursorIndex()];
-		if (currentCursor.GetSelectionStart().mColumn != 0)
-			MoveHome(false);
-		MoveDown(1, true);
-		MoveEnd(true);
+		Cursor& cursor = mState.mCursors[c];
+		// If selection has been made backwards, reverse it
+		if (cursor.mInteractiveStart > cursor.mInteractiveEnd)
+			std::swap(cursor.mInteractiveStart, cursor.mInteractiveEnd);
+		cursor.mInteractiveStart.mColumn = 0;
+		cursor.mInteractiveEnd.mColumn = GetLineMaxColumn(cursor.mInteractiveEnd.mLine);
 	}
-	else
-	{
-		ClearExtraCursors();
-		MoveHome(false);
-		MoveEnd(true);
-		MoveRight(true);
-	}
+	MoveRight(true);
 }
 
 void TextEditor::SelectRegion(int aStartLine, int aStartChar, int aEndLine, int aEndChar)
