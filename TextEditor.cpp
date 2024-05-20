@@ -1018,6 +1018,18 @@ void TextEditor::EnterCharacter(ImWchar aChar, bool aShift)
 					added.mEnd = Coordinates(coord.mLine, GetCharacterColumn(coord.mLine, cindex));
 					SetCursorPosition(Coordinates(coord.mLine, GetCharacterColumn(coord.mLine, cindex - 1)), c);
 				}
+				// If the entered character is a closing bracket and the following character is a closing brace, just skip over it
+				// as it was probably put by accident, since with mCompletePairedGlyphs the closing brackets are put automatically.
+				else if (mCompletePairedGlyphs && (aChar == '}' || aChar == ']' || aChar == ')' || aChar == '"' || aChar == '\''))
+				{
+					if (line.size() > cindex && line[cindex].mChar == aChar)
+						SetCursorPosition(Coordinates(coord.mLine, GetCharacterColumn(coord.mLine, ++cindex)), c);
+					else
+					{
+						AddGlyphToLine(coord.mLine, cindex++, Glyph(aChar, PaletteIndex::Default));
+						SetCursorPosition(Coordinates(coord.mLine, GetCharacterColumn(coord.mLine, cindex)), c);
+					}
+				}
 				else
 				{
 					for (auto p = buf; *p != '\0'; p++, ++cindex)
