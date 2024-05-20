@@ -1095,8 +1095,11 @@ void TextEditor::Delete(bool aWordMode, const EditorState* aEditorState)
 		{
 			if (!mState.mCursors[c].HasSelection())
 				continue;
-			u.mOperations.push_back({ GetSelectedText(c), mState.mCursors[c].GetSelectionStart(), mState.mCursors[c].GetSelectionEnd(), UndoOperationType::Delete });
-			DeleteSelection(c);
+			if (!DeleteMatchingBrackets(u, c))
+			{
+				u.mOperations.push_back({ GetSelectedText(c), mState.mCursors[c].GetSelectionStart(), mState.mCursors[c].GetSelectionEnd(), UndoOperationType::Delete });
+				DeleteSelection(c);
+			}
 		}
 		u.mAfter = mState;
 		AddUndo(u);
@@ -1924,6 +1927,43 @@ void TextEditor::DeleteSelection(int aCursor)
 	DeleteRange(mState.mCursors[aCursor].GetSelectionStart(), mState.mCursors[aCursor].GetSelectionEnd());
 	SetCursorPosition(mState.mCursors[aCursor].GetSelectionStart(), aCursor);
 	Colorize(mState.mCursors[aCursor].GetSelectionStart().mLine, 1);
+}
+
+bool TextEditor::DeleteMatchingBrackets(UndoRecord& aUndo, int aCursor)
+{
+	auto& cursor = mState.mCursors[aCursor];
+	bool isBackpace = cursor.mInteractiveEnd < cursor.mInteractiveStart;
+	auto characterIndex = GetCharacterIndexR(cursor.mInteractiveEnd) - !isBackpace;
+	if (mCompletePairedGlyphs &&
+		FindMatchingBracket(cursor.mInteractiveEnd.mLine, characterIndex, mMatchingBracketCoords))
+	{
+		mState.AddCursor();
+		auto lc = mState.mLastAddedCursor; // lc = last cursor
+		auto mMatchingBracketCoordsEnd = mMatchingBracketCoords;
+		MoveCoords(mMatchingBracketCoordsEnd,MoveDirection::Right);
+		SetSelection(mMatchingBracketCoords, mMatchingBracketCoordsEnd, mState.mLastAddedCursor);
+		// If original cursor was further than the line, first process it.
+		// The reason why, is that by processing the latest cursor first in such scenario,
+		// we'd invalidate the indices of the original cursor. We hence need to process
+		// bracket deletion from right to left.
+		if (mMatchingBracketCoords < cursor.mInteractiveEnd)
+		{
+			aUndo.mOperations.push_back({ GetSelectedText(aCursor), cursor.GetSelectionStart(), cursor.GetSelectionEnd(), UndoOperationType::Delete });
+			DeleteSelection(aCursor);
+		}
+		aUndo.mOperations.push_back({ GetSelectedText(lc), mState.mCursors[lc].GetSelectionStart(), mState.mCursors[lc].GetSelectionEnd(), UndoOperationType::Delete });
+		DeleteSelection(lc);
+		SetCursorPosition(cursor.GetSelectionEnd(), lc);
+		MergeCursorsIfPossible();
+		mEnsureCursorVisible = -1;
+		if (mMatchingBracketCoords > cursor.mInteractiveEnd)
+		{
+			aUndo.mOperations.push_back({ GetSelectedText(aCursor), cursor.GetSelectionStart(), cursor.GetSelectionEnd(), UndoOperationType::Delete });
+			DeleteSelection(aCursor);
+		}
+		return true;
+	}
+	return false;
 }
 
 void TextEditor::RemoveGlyphsFromLine(int aLine, int aStartChar, int aEndChar)

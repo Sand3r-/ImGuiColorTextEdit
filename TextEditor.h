@@ -375,6 +375,7 @@ private:
 	void RemoveLines(int aStart, int aEnd);
 	void DeleteRange(const Coordinates& aStart, const Coordinates& aEnd);
 	void DeleteSelection(int aCursor = -1);
+	bool DeleteMatchingBrackets(UndoRecord& aUndo, int aCursor);
 
 	void RemoveGlyphsFromLine(int aLine, int aStartChar, int aEndChar = -1);
 	void AddGlyphsToLine(int aLine, int aTargetIndex, Line::iterator aSourceStart, Line::iterator aSourceEnd);
