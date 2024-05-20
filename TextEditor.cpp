@@ -1327,14 +1327,15 @@ void TextEditor::ChangeCurrentLinesIndentation(bool aIncrease)
 
 			if (aIncrease)
 			{
-				if (mLines[currentLine].size() > 0)
-				{
-					Coordinates lineStart = { currentLine, 0 };
-					Coordinates insertionEnd = lineStart;
-					InsertTextAt(insertionEnd, "    "); // sets insertion end
-					u.mOperations.push_back({ "    ", lineStart, insertionEnd, UndoOperationType::Add });
-					Colorize(lineStart.mLine, 1);
-				}
+				Coordinates lineStart = { currentLine, 0 };
+				Coordinates insertionEnd = lineStart;
+				InsertTextAt(insertionEnd, "    "); // sets insertion end
+				u.mOperations.push_back({ "    ", lineStart, insertionEnd, UndoOperationType::Add });
+				Colorize(lineStart.mLine, 1);
+
+				if (mLines[currentLine].size() == mTabSize)
+					SetCursorPosition(insertionEnd, c);
+
 			}
 			else
 			{
