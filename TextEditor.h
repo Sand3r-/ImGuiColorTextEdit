@@ -320,6 +320,8 @@ private:
 	std::string GetClipboardText() const;
 	std::string GetSelectedText(int aCursor = -1) const;
 
+	std::string StringFromLine(Line& aLine) const;
+
 	void SetCursorPosition(const Coordinates& aPosition, int aCursor = -1, bool aClearSelection = true);
 
 	int InsertTextAt(Coordinates& aWhere, const char* aValue);
@@ -385,6 +387,9 @@ private:
 	void HandleKeyboardInputs(bool aParentIsFocused = false);
 	void HandleMouseInputs();
 	void UpdateViewVariables(float aScrollX, float aScrollY);
+	void RunAutoComplete();
+	void AddAutoCompleteText();
+	void RemoveAutoCompleteText();
 	void Render(bool aParentIsFocused = false);
 
 	void OnCursorPositionChanged();
@@ -399,6 +404,7 @@ private:
 	void UpdatePalette();
 
 	std::vector<Line> mLines;
+	Line mAutoCompleteText;
 	EditorState mState;
 	std::vector<UndoRecord> mUndoBuffer;
 	int mUndoIndex = 0;

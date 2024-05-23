@@ -379,8 +379,11 @@ bool TextEditor::Render(const char* aTitle, bool aParentIsFocused, const ImVec2&
 	bool isFocused = ImGui::IsWindowFocused();
 	HandleKeyboardInputs(aParentIsFocused);
 	HandleMouseInputs();
+	RunAutoComplete();
+	AddAutoCompleteText();
 	ColorizeInternal();
 	Render(aParentIsFocused);
+	RemoveAutoCompleteText();
 
 	ImGui::EndChild();
 
@@ -623,6 +626,14 @@ std::string TextEditor::GetSelectedText(int aCursor) const
 		aCursor = mState.mCurrentCursor;
 
 	return GetText(mState.mCursors[aCursor].GetSelectionStart(), mState.mCursors[aCursor].GetSelectionEnd());
+}
+
+std::string TextEditor::StringFromLine(Line &aLine) const
+{
+	std::string result(aLine.size(), '\0');
+	for (size_t i = 0; i < aLine.size(); ++i)
+		result[i] = aLine[i].mChar;
+    return result;
 }
 
 void TextEditor::SetCursorPosition(const Coordinates& aPosition, int aCursor, bool aClearSelection)
@@ -2077,6 +2088,8 @@ void TextEditor::HandleKeyboardInputs(bool aParentIsFocused)
 			Backspace(ctrl);
 		else if (!mReadOnly && !alt && ctrl && shift && !super && ImGui::IsKeyPressed(ImGuiKey_K))
 			RemoveCurrentLines();
+		else if (!mReadOnly && !mAutoCompleteText.empty() && ImGui::IsKeyPressed(ImGuiKey_Tab))
+			InsertTextAtCursor(StringFromLine(mAutoCompleteText));
 		else if (!mReadOnly && shift && ImGui::IsKeyPressed(ImGuiKey_Tab))
 			ChangeCurrentLinesIndentation(false);
 		else if (!mReadOnly && ImGui::IsKeyPressed(ImGuiKey_Tab))
@@ -2273,6 +2286,147 @@ void TextEditor::UpdateViewVariables(float aScrollX, float aScrollY)
 	mVisibleColumnCount = Max((int)ceil((mContentWidth - Max(mTextStart - aScrollX, 0.0f)) / mCharAdvance.x), 0);
 	mFirstVisibleColumn = Max((int)(Max(aScrollX - mTextStart, 0.0f) / mCharAdvance.x), 0);
 	mLastVisibleColumn = Max((int)((mContentWidth + aScrollX - mTextStart) / mCharAdvance.x), 0);
+}
+
+void TextEditor::RunAutoComplete()
+{
+	mAutoCompleteText.clear();
+	if (AnyCursorHasSelection() || mState.mCurrentCursor > 0)
+		return;
+
+	int line, column;
+	GetCursorPosition(line, column);
+	if (mLines[line].empty())
+		return;
+
+	auto cursorPos = GetActualCursorCoordinates();
+	auto wordBeg = FindWordStart(cursorPos);
+
+	if (wordBeg == cursorPos)
+		return;
+
+	std::string word = GetText(wordBeg, cursorPos);
+	for(auto& id : mLanguageDefinition->mIdentifiers)
+	{
+		if (!strncmp(id.c_str(), word.c_str(), word.length()))
+		{
+			mAutoCompleteText.clear();
+			for (const char* c = id.c_str() + word.length(); *c; ++c)
+				mAutoCompleteText.push_back(Glyph(*c, PaletteIndex::LineNumber));
+		}
+	}
+	for(auto& k : mLanguageDefinition->mKeywords)
+	{
+		if (!strncmp(k.c_str(), word.c_str(), word.length()))
+		{
+			mAutoCompleteText.clear();
+			for (const char* c = k.c_str() + word.length(); *c; ++c)
+				mAutoCompleteText.push_back(Glyph(*c, PaletteIndex::LineNumber));
+		}
+	}
+
+	std::string buffer;
+	std::cmatch results;
+	std::string id;
+
+	int endLine = std::max(0, (int)mLines.size());
+	for (int i = 0; i < endLine; ++i)
+	{
+		auto& line = mLines[i];
+
+		if (line.empty() || i == wordBeg.mLine)
+			continue;
+
+		buffer.resize(line.size());
+		for (size_t j = 0; j < line.size(); ++j)
+		{
+			auto& col = line[j];
+			buffer[j] = col.mChar;
+		}
+
+		const char* bufferBegin = &buffer.front();
+		const char* bufferEnd = bufferBegin + buffer.size();
+
+		auto last = bufferEnd;
+
+		for (auto first = bufferBegin; first != last; )
+		{
+			const char* token_begin = nullptr;
+			const char* token_end = nullptr;
+			PaletteIndex token_color = PaletteIndex::Default;
+
+			bool hasTokenizeResult = false;
+
+			if (mLanguageDefinition->mTokenize != nullptr)
+			{
+				if (mLanguageDefinition->mTokenize(first, last, token_begin, token_end, token_color))
+					hasTokenizeResult = true;
+			}
+
+			if (hasTokenizeResult == false)
+			{
+				for (const auto& p : mRegexList)
+				{
+					bool regexSearchResult = false;
+					try { regexSearchResult = std::regex_search(first, last, results, p.first, std::regex_constants::match_continuous); }
+					catch (...) {}
+					if (regexSearchResult)
+					{
+						hasTokenizeResult = true;
+
+						auto& v = *results.begin();
+						token_begin = v.first;
+						token_end = v.second;
+						token_color = p.second;
+						break;
+					}
+				}
+			}
+
+			if (hasTokenizeResult == false)
+			{
+				first++;
+			}
+			else
+			{
+				const size_t token_length = token_end - token_begin;
+				id.assign(token_begin, token_end);
+
+				if (!strncmp(id.c_str(), word.c_str(), word.length()))
+				{
+					mAutoCompleteText.clear();
+					for (const char* c = id.c_str() + word.length(); *c; ++c)
+						mAutoCompleteText.push_back(Glyph(*c, PaletteIndex::LineNumber));
+				}
+
+				first = token_end;
+			}
+		}
+	}
+}
+
+void TextEditor::AddAutoCompleteText()
+{
+	if (AnyCursorHasSelection() || mState.mCurrentCursor > 0)
+		return;
+
+	int line, column;
+	GetCursorPosition(line, column);
+	column = std::min(column, (int)mLines[line].size());
+	AddGlyphsToLine(line, column, mAutoCompleteText.begin(), mAutoCompleteText.end());
+}
+
+void TextEditor::RemoveAutoCompleteText()
+{
+	if (AnyCursorHasSelection() || mState.mCurrentCursor > 0)
+		return;
+
+	int line, column;
+	GetCursorPosition(line, column);
+	column = std::min(column, (int)mLines[line].size() - (int)mAutoCompleteText.size());
+	int endChar = std::distance(mAutoCompleteText.begin(), mAutoCompleteText.end());
+	endChar += column;
+	RemoveGlyphsFromLine(line, column, endChar);
 }
 
 void TextEditor::Render(bool aParentIsFocused)
