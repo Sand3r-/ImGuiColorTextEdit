@@ -2294,18 +2294,50 @@ void TextEditor::RunAutoComplete()
 	if (AnyCursorHasSelection() || mState.mCurrentCursor > 0)
 		return;
 
-	int line, column;
-	GetCursorPosition(line, column);
-	if (mLines[line].empty())
-		return;
-
 	auto cursorPos = GetActualCursorCoordinates();
-	auto wordBeg = FindWordStart(cursorPos);
+	Coordinates tokenBeg;
+	/*
+		Find begining of the token if the cursor is at the end of a token
+		Otherwise, terminate
+	*/
+	{
+		std::string lineStr = StringFromLine(mLines[cursorPos.mLine]);
+		const char* first = lineStr.c_str();
+		const char* last = first + lineStr.length();
+		for (; first != last;)
+		{
+			const char* token_begin = nullptr;
+			const char* token_end = nullptr;
+			auto unused = PaletteIndex::Default;
+			if (mLanguageDefinition->mTokenize(first, last, token_begin, token_end, unused))
+			{
+				int token_begin_index = token_begin - lineStr.c_str();
+				int token_end_index = token_end - lineStr.c_str();
+				int cursor_index = cursorPos.mColumn;
+				if (token_begin_index <= cursor_index && cursor_index == token_end_index)
+				{
+					tokenBeg = Coordinates(cursorPos.mLine, token_begin_index);
+					break;
+				}
+				else
+				{
+					first = token_end;
+				}
+			}
+			else // No more tokens found
+			{
+				break;
+			}
+		}
+	}
 
-	if (wordBeg == cursorPos)
+	if (tokenBeg == cursorPos)
 		return;
 
-	std::string word = GetText(wordBeg, cursorPos);
+	// Search for suggestions in identifiers and keywords
+	// Potential optimisation for both loops: Don't recreate mAutoCompleteText
+	// every time, instead save the indices.
+	std::string word = GetText(tokenBeg, cursorPos);
 	for(auto& id : mLanguageDefinition->mIdentifiers)
 	{
 		if (!strncmp(id.c_str(), word.c_str(), word.length()))
@@ -2313,6 +2345,7 @@ void TextEditor::RunAutoComplete()
 			mAutoCompleteText.clear();
 			for (const char* c = id.c_str() + word.length(); *c; ++c)
 				mAutoCompleteText.push_back(Glyph(*c, PaletteIndex::LineNumber));
+			break;
 		}
 	}
 	for(auto& k : mLanguageDefinition->mKeywords)
@@ -2322,9 +2355,11 @@ void TextEditor::RunAutoComplete()
 			mAutoCompleteText.clear();
 			for (const char* c = k.c_str() + word.length(); *c; ++c)
 				mAutoCompleteText.push_back(Glyph(*c, PaletteIndex::LineNumber));
+			break;
 		}
 	}
 
+	// Search for suggestions in existing tokens
 	std::string buffer;
 	std::cmatch results;
 	std::string id;
@@ -2334,15 +2369,10 @@ void TextEditor::RunAutoComplete()
 	{
 		auto& line = mLines[i];
 
-		if (line.empty() || i == wordBeg.mLine)
+		if (line.empty() || i == cursorPos.mLine)
 			continue;
 
-		buffer.resize(line.size());
-		for (size_t j = 0; j < line.size(); ++j)
-		{
-			auto& col = line[j];
-			buffer[j] = col.mChar;
-		}
+		buffer = StringFromLine(line);
 
 		const char* bufferBegin = &buffer.front();
 		const char* bufferEnd = bufferBegin + buffer.size();
@@ -2397,12 +2427,15 @@ void TextEditor::RunAutoComplete()
 					mAutoCompleteText.clear();
 					for (const char* c = id.c_str() + word.length(); *c; ++c)
 						mAutoCompleteText.push_back(Glyph(*c, PaletteIndex::LineNumber));
+					goto end;
 				}
 
 				first = token_end;
 			}
 		}
 	}
+end:
+	return;
 }
 
 void TextEditor::AddAutoCompleteText()
