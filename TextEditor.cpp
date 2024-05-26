@@ -2004,7 +2004,7 @@ bool TextEditor::DeleteMatchingBrackets(UndoRecord& aUndo, int aCursor)
 	auto& cursor = mState.mCursors[aCursor];
 	bool isBackpace = cursor.mInteractiveEnd < cursor.mInteractiveStart;
 	auto characterIndex = GetCharacterIndexR(cursor.mInteractiveEnd) - !isBackpace;
-	if (mCompletePairedGlyphs && !mState.isAtTokenEnd[aCursor] &&
+	if (mCompletePairedGlyphs && !mState.isAtTokenEnd[aCursor] && characterIndex > 0 &&
 		FindMatchingBracket(cursor.mInteractiveEnd.mLine, characterIndex, mMatchingBracketCoords))
 	{
 		mState.AddCursor();
@@ -2026,6 +2026,7 @@ bool TextEditor::DeleteMatchingBrackets(UndoRecord& aUndo, int aCursor)
 		SetCursorPosition(cursor.GetSelectionEnd(), lc);
 		MergeCursorsIfPossible();
 		mEnsureCursorVisible = -1;
+		cursor = mState.mCursors[aCursor]; // reassing since the previous cursor might've been invalidated
 		if (mMatchingBracketCoords > cursor.mInteractiveEnd)
 		{
 			aUndo.mOperations.push_back({ GetSelectedText(aCursor), cursor.GetSelectionStart(), cursor.GetSelectionEnd(), UndoOperationType::Delete });
