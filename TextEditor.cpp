@@ -377,6 +377,7 @@ bool TextEditor::Render(const char* aTitle, bool aParentIsFocused, const ImVec2&
 	ImGui::BeginChild(aTitle, aSize, aBorder, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNavInputs);
 
 	bool isFocused = ImGui::IsWindowFocused();
+	mState.SetIsAtTokenEnd(*this);
 	HandleKeyboardInputs(aParentIsFocused);
 	HandleMouseInputs();
 	RunAutoComplete();
@@ -491,6 +492,39 @@ void TextEditor::EditorState::SortCursorsFromTopToBottom()
 	for (int c = mCurrentCursor; c > -1; c--)
 		if (mCursors[c].mInteractiveEnd == lastAddedCursorPos)
 			mLastAddedCursor = c;
+}
+
+void TextEditor::EditorState::SetIsAtTokenEnd(TextEditor& e)
+{
+	isAtTokenEnd.clear();
+	isAtTokenEnd.resize(mCursors.size(), false);
+	for (int c = 0; c <= mCurrentCursor; c++)
+	{
+		auto cursorPos = e.GetActualCursorCoordinates(c);
+		std::string lineStr = e.StringFromLine(e.mLines[cursorPos.mLine]);
+		const char* first = lineStr.c_str();
+		const char* last = first + lineStr.length();
+		const char* token_begin = nullptr;
+		const char* token_end = nullptr;
+		for (; first != last;)
+		{
+			auto unused = PaletteIndex::Default;
+			if (e.mLanguageDefinition->mTokenize(first, last, token_begin, token_end, unused))
+			{
+				int token_begin_index = token_begin - lineStr.c_str();
+				int token_end_index = token_end - lineStr.c_str();
+				int cursor_index = cursorPos.mColumn;
+				if (token_begin_index < cursor_index && cursor_index == token_end_index)
+				{
+					isAtTokenEnd[c] = true;
+					break;
+				}
+				first = token_end;
+				continue;
+			}
+			first++;
+		}
+	}
 }
 
 // ---------- Undo record functions --------- //
@@ -1014,7 +1048,7 @@ void TextEditor::EnterCharacter(ImWchar aChar, bool aShift)
 					u.mOperations.push_back(removed);
 				}
 
-				if (mCompletePairedGlyphs && (aChar == '{' || aChar == '[' || aChar == '(' || aChar == '"' || aChar == '\''))
+				if (mCompletePairedGlyphs && (mState.isAtTokenEnd[c] && (aChar == '{' || aChar == '[' || aChar == '(')))
 				{
 					auto closer = aChar == '{' ? '}' : (aChar == '[' ? ']' : (aChar == '(' ? ')' : aChar));
 
@@ -1031,14 +1065,36 @@ void TextEditor::EnterCharacter(ImWchar aChar, bool aShift)
 				}
 				// If the entered character is a closing bracket and the following character is a closing brace, just skip over it
 				// as it was probably put by accident, since with mCompletePairedGlyphs the closing brackets are put automatically.
-				else if (mCompletePairedGlyphs && (aChar == '}' || aChar == ']' || aChar == ')' || aChar == '"' || aChar == '\''))
+				else if (mCompletePairedGlyphs && (aChar == '}' || aChar == ']' || aChar == ')'))
 				{
 					if (line.size() > cindex && line[cindex].mChar == aChar)
 						SetCursorPosition(Coordinates(coord.mLine, GetCharacterColumn(coord.mLine, ++cindex)), c);
 					else
 					{
 						AddGlyphToLine(coord.mLine, cindex++, Glyph(aChar, PaletteIndex::Default));
+						buf[0] = aChar;
+						buf[1] = 0;
+						added.mText = buf;
+						added.mEnd = Coordinates(coord.mLine, GetCharacterColumn(coord.mLine, cindex));
 						SetCursorPosition(Coordinates(coord.mLine, GetCharacterColumn(coord.mLine, cindex)), c);
+					}
+				}
+				else if (mCompletePairedGlyphs && (aChar == '"' || aChar == '\''))
+				{
+					if (line.size() > cindex && line[cindex].mChar == aChar)
+						SetCursorPosition(Coordinates(coord.mLine, GetCharacterColumn(coord.mLine, ++cindex)), c);
+					else
+					{
+						AddGlyphToLine(coord.mLine, cindex++, Glyph(aChar, PaletteIndex::Default));
+						AddGlyphToLine(coord.mLine, cindex++, Glyph(aChar, PaletteIndex::Default));
+
+						buf[0] = aChar;
+						buf[1] = aChar;
+						buf[2] = 0;
+
+						added.mText = buf;
+						added.mEnd = Coordinates(coord.mLine, GetCharacterColumn(coord.mLine, cindex));
+						SetCursorPosition(Coordinates(coord.mLine, GetCharacterColumn(coord.mLine, cindex - 1)), c);
 					}
 				}
 				else
@@ -1948,7 +2004,7 @@ bool TextEditor::DeleteMatchingBrackets(UndoRecord& aUndo, int aCursor)
 	auto& cursor = mState.mCursors[aCursor];
 	bool isBackpace = cursor.mInteractiveEnd < cursor.mInteractiveStart;
 	auto characterIndex = GetCharacterIndexR(cursor.mInteractiveEnd) - !isBackpace;
-	if (mCompletePairedGlyphs &&
+	if (mCompletePairedGlyphs && !mState.isAtTokenEnd[aCursor] &&
 		FindMatchingBracket(cursor.mInteractiveEnd.mLine, characterIndex, mMatchingBracketCoords))
 	{
 		mState.AddCursor();
@@ -2291,53 +2347,20 @@ void TextEditor::UpdateViewVariables(float aScrollX, float aScrollY)
 void TextEditor::RunAutoComplete()
 {
 	mAutoCompleteText.clear();
-	if (AnyCursorHasSelection() || mState.mCurrentCursor > 0)
+	if (AnyCursorHasSelection() || mState.mCurrentCursor > 0 || !mState.isAtTokenEnd[0])
 		return;
 
-	auto cursorPos = GetActualCursorCoordinates();
-	Coordinates tokenBeg;
-	/*
-		Find begining of the token if the cursor is at the end of a token
-		Otherwise, terminate
-	*/
-	{
-		std::string lineStr = StringFromLine(mLines[cursorPos.mLine]);
-		const char* first = lineStr.c_str();
-		const char* last = first + lineStr.length();
-		for (; first != last;)
-		{
-			const char* token_begin = nullptr;
-			const char* token_end = nullptr;
-			auto unused = PaletteIndex::Default;
-			if (mLanguageDefinition->mTokenize(first, last, token_begin, token_end, unused))
-			{
-				int token_begin_index = token_begin - lineStr.c_str();
-				int token_end_index = token_end - lineStr.c_str();
-				int cursor_index = cursorPos.mColumn;
-				if (token_begin_index <= cursor_index && cursor_index == token_end_index)
-				{
-					tokenBeg = Coordinates(cursorPos.mLine, token_begin_index);
-					break;
-				}
-				else
-				{
-					first = token_end;
-				}
-			}
-			else // No more tokens found
-			{
-				break;
-			}
-		}
-	}
+	Coordinates tokenBeg, tokenEnd;
+	tokenBeg = tokenEnd = GetActualCursorCoordinates();
+	MoveCoords(tokenBeg, MoveDirection::Left, true);
 
-	if (tokenBeg == cursorPos)
+	if (tokenBeg == tokenEnd)
 		return;
 
 	// Search for suggestions in identifiers and keywords
 	// Potential optimisation for both loops: Don't recreate mAutoCompleteText
 	// every time, instead save the indices.
-	std::string word = GetText(tokenBeg, cursorPos);
+	std::string word = GetText(tokenBeg, tokenEnd);
 	for(auto& id : mLanguageDefinition->mIdentifiers)
 	{
 		if (!strncmp(id.c_str(), word.c_str(), word.length()))
@@ -2369,7 +2392,7 @@ void TextEditor::RunAutoComplete()
 	{
 		auto& line = mLines[i];
 
-		if (line.empty() || i == cursorPos.mLine)
+		if (line.empty() || i == tokenEnd.mLine)
 			continue;
 
 		buffer = StringFromLine(line);

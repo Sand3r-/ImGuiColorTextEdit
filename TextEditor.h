@@ -266,9 +266,11 @@ private:
 		int mCurrentCursor = 0;
 		int mLastAddedCursor = 0;
 		std::vector<Cursor> mCursors = { {{0,0}} };
+		std::vector<bool> isAtTokenEnd = { false };
 		void AddCursor();
 		int GetLastAddedCursorIndex();
 		void SortCursorsFromTopToBottom();
+		void SetIsAtTokenEnd(TextEditor& e);
 	};
 
 	struct Glyph
