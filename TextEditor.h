@@ -140,9 +140,11 @@ public:
 	void SetTextLines(const std::vector<std::string>& aLines);
 	std::vector<std::string> GetTextLines() const;
 
+	std::string GetCurrentIdentifier();
+
 	void SetErrorMarkers(const std::map<int, std::string>& aMarkers) { mErrorMarkers = aMarkers; }
 
-	bool Render(const char* aTitle, bool aParentIsFocused = false, const ImVec2& aSize = ImVec2(), bool aBorder = false);
+	bool Render(const char* aTitle, bool aParentIsFocused = false, const ImVec2& aSize = ImVec2(), bool aBorder = false, int flags = 0);
 
 	void ImGuiDebugPanel(const std::string& panelName = "Debug");
 	void UnitTests();
@@ -151,6 +153,7 @@ public:
 	static const Palette& GetDarkPalette();
 	static const Palette& GetLightPalette();
 	static const Palette& GetRetroBluePalette();
+	static const Palette& GetBase2TonePalette();
 
 private:
 	// ------------- Generic utils ------------- //

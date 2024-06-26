@@ -362,7 +362,36 @@ std::vector<std::string> TextEditor::GetTextLines() const
 	return result;
 }
 
-bool TextEditor::Render(const char* aTitle, bool aParentIsFocused, const ImVec2& aSize, bool aBorder)
+std::string TextEditor::GetCurrentIdentifier()
+{
+	if (mState.mCursors.size() > 1 || AnyCursorHasSelection()) return "";
+
+	MoveLeft(false, true);
+	MoveRight(true, true);
+
+	Coordinates& selection_start = mState.mCursors[0].GetSelectionStart();
+	Coordinates& selection_end   = mState.mCursors[0].GetSelectionEnd();
+	std::string token = GetText(selection_start, selection_end);
+
+	// Undo(2);
+	ClearSelections();
+
+	const char* begin = token.c_str();
+	const char* end = begin + token.length();
+
+	PaletteIndex token_color;
+	mLanguageDefinition->mTokenize(begin, end, begin, end, token_color);
+	if (token_color == PaletteIndex::Identifier)
+	{
+		return token;
+	}
+	else
+	{
+		return "";
+	}
+}
+
+bool TextEditor::Render(const char* aTitle, bool aParentIsFocused, const ImVec2& aSize, bool aBorder, int flags)
 {
 	if (mCursorPositionChanged)
 		OnCursorPositionChanged();
@@ -374,7 +403,7 @@ bool TextEditor::Render(const char* aTitle, bool aParentIsFocused, const ImVec2&
 	ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::ColorConvertU32ToFloat4(mPalette[(int)PaletteIndex::Background]));
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
 
-	ImGui::BeginChild(aTitle, aSize, aBorder, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNavInputs);
+	ImGui::BeginChild(aTitle, aSize, aBorder, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNavInputs | flags);
 
 	bool isFocused = ImGui::IsWindowFocused();
 	mState.SetIsAtTokenEnd(*this);
@@ -3187,7 +3216,7 @@ const TextEditor::Palette& TextEditor::GetMarianaPalette()
 			0xe0a0ffff, // Preproc identifier
 			0xa6acb9ff, // Comment (single line)
 			0xa6acb9ff, // Comment (multi line)
-			0x303841ff, // Background
+			0x0b0d0fff, // Background
 			0xe0e0e0ff, // Cursor
 			0x6e7a8580, // Selection
 			0xec5f6680, // ErrorMarker
@@ -3252,6 +3281,32 @@ const TextEditor::Palette& TextEditor::GetRetroBluePalette()
 	return p;
 }
 
+const TextEditor::Palette& TextEditor::GetBase2TonePalette()
+{
+	const static Palette p = { {
+			0xffff00ff,	// None
+			0xffcc99ff,	// Keyword
+			0xb37537ff,	// Number
+			0xffcc99ff,	// String
+			0xffcc99ff, // Char literal
+			0x545167ff, // Punctuation
+			0xffcc99ff,	// Preprocessor
+			0x8a75f5ff, // Identifier
+			0x8a75f5ff, // Known identifier
+			0xe09142ff, // Preproc identifier
+			0x545167ff, // Comment (single line)
+			0x545167ff, // Comment (multi line)
+			0x2a2734ff, // Background
+			0xeeebffff, // Cursor
+			0x6a51e680, // Selection
+			0x4e3c37a0, // ErrorMarker
+			0xe0914280, // Breakpoint
+			0x363342ff, // Line number
+			0xbab8c7ff, // Current line number
+		} };
+	return p;
+}
+
 const std::unordered_map<char, char> TextEditor::OPEN_TO_CLOSE_CHAR = {
 	{'{', '}'},
 	{'(' , ')'},
@@ -3263,4 +3318,4 @@ const std::unordered_map<char, char> TextEditor::CLOSE_TO_OPEN_CHAR = {
 	{']' , '['}
 };
 
-TextEditor::Palette TextEditor::defaultPalette = TextEditor::GetDarkPalette();
+TextEditor::Palette TextEditor::defaultPalette = TextEditor::GetBase2TonePalette();
