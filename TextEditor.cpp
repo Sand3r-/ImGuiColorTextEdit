@@ -3286,13 +3286,13 @@ const TextEditor::Palette& TextEditor::GetBase2TonePalette()
 	const static Palette p = { {
 			0xffff00ff,	// None
 			0xffcc99ff,	// Keyword
-			0xb37537ff,	// Number
+			0xffcc99ff,	// Number
 			0xffcc99ff,	// String
 			0xffcc99ff, // Char literal
-			0x545167ff, // Punctuation
+			0xe09142FF, // Punctuation
 			0xffcc99ff,	// Preprocessor
-			0x8a75f5ff, // Identifier
-			0x8a75f5ff, // Known identifier
+			0xafa0feFF, // Identifier
+			0xafa0feFF, // Known identifier
 			0xe09142ff, // Preproc identifier
 			0x545167ff, // Comment (single line)
 			0x545167ff, // Comment (multi line)
@@ -3300,9 +3300,11 @@ const TextEditor::Palette& TextEditor::GetBase2TonePalette()
 			0xeeebffff, // Cursor
 			0x6a51e680, // Selection
 			0x4e3c37a0, // ErrorMarker
-			0xe0914280, // Breakpoint
-			0x363342ff, // Line number
+			0x7c756eFF, // ControlCharacter
+			0xffcc99ff, // Breakpoint
+			0x787391FF, // Line number
 			0xbab8c7ff, // Current line number
+			0xebe6e0FF, // Function
 		} };
 	return p;
 }

@@ -65,6 +65,7 @@ public:
 		Breakpoint,
 		LineNumber,
 		CurrentLineNumber,
+		Function,
 		Max
 	};
 

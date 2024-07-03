@@ -289,6 +289,33 @@ static bool TokenizeLuaStyleIdentifier(const char* in_begin, const char* in_end,
 	return false;
 }
 
+static bool TokenizeLuaStyleFunction(const char* in_begin, const char* in_end, const char*& out_begin, const char*& out_end)
+{
+	if (TokenizeLuaStyleIdentifier(in_begin, in_end, out_begin, out_end))
+	{
+		const char* p = out_end;
+		if (p < in_end)
+		{
+			if (*p == '(')
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+		else
+		{
+			return false;
+		}
+	}
+	else
+	{
+		return false;
+	}
+}
+
 static bool TokenizeLuaStyleNumber(const char* in_begin, const char* in_end, const char*& out_begin, const char*& out_end)
 {
 	const char* p = in_begin;
@@ -545,6 +572,8 @@ TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::Lua()
 			}
 			else if (TokenizeLuaStyleString(in_begin, in_end, out_begin, out_end))
 				paletteIndex = PaletteIndex::String;
+			else if (TokenizeLuaStyleFunction(in_begin, in_end, out_begin, out_end))
+				paletteIndex = PaletteIndex::Function;
 			else if (TokenizeLuaStyleIdentifier(in_begin, in_end, out_begin, out_end))
 				paletteIndex = PaletteIndex::Identifier;
 			else if (TokenizeLuaStyleNumber(in_begin, in_end, out_begin, out_end))
