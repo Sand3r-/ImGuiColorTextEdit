@@ -1423,7 +1423,7 @@ void TextEditor::ChangeCurrentLinesIndentation(bool aIncrease)
 
 			if (aIncrease)
 			{
-				if (!(AnyCursorHasSelection() != mLines[currentLine].size() > 0))
+				if (!(AnyCursorHasSelection()))
 				{
 					Coordinates lineStart = { currentLine, 0 };
 					Coordinates insertionEnd = lineStart;
