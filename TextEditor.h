@@ -90,6 +90,7 @@ public:
 
 		void RegisterIdentifiers(const char** identifiers, int num);
 
+		static LanguageDefinition& Cpp();
 		static LanguageDefinition& Glsl();
 		static LanguageDefinition& Lua();
 		static LanguageDefinition& Json();
