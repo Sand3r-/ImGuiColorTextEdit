@@ -171,7 +171,13 @@ static bool TokenizeLuaStylePunctuation(const char* in_begin, const char* in_end
 	return false;
 }
 
-const TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::Glsl()
+void TextEditor::LanguageDefinition::RegisterIdentifiers(const char** identifiers, int num)
+{
+	for (int i = 0; i < num; i++)
+		mIdentifiers.insert(identifiers[i]);
+}
+
+TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::Glsl()
 {
 	static bool inited = false;
 	static LanguageDefinition langDef;
@@ -215,7 +221,7 @@ const TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::Glsl()
 	return langDef;
 }
 
-const TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::Lua()
+TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::Lua()
 {
 	static bool inited = false;
 	static LanguageDefinition langDef;
@@ -281,7 +287,7 @@ const TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::Lua()
 	return langDef;
 }
 
-const TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::Json()
+TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::Json()
 {
 	static bool inited = false;
 	static LanguageDefinition langDef;
