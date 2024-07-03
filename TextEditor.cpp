@@ -3299,7 +3299,7 @@ const TextEditor::Palette& TextEditor::GetBase2TonePalette()
 			0x2a2734ff, // Background
 			0xeeebffff, // Cursor
 			0x6a51e680, // Selection
-			0x4e3c37a0, // ErrorMarker
+			0xe09142FF, // ErrorMarker
 			0x7c756eFF, // ControlCharacter
 			0xffcc99ff, // Breakpoint
 			0x787391FF, // Line number
